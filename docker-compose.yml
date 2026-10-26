@@ -1,0 +1,21 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: orders-rabbitmq
+    hostname: orders-rabbitmq   # fixed hostname keeps the durable data dir stable across restarts
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI -> http://localhost:15672 (guest / guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+
+volumes:
+  rabbitmq-data:
