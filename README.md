@@ -9,6 +9,8 @@ This is an asynchronous messaging system built with **Python** and **RabbitMQ**:
 - A worker can be made to **crash before it ACKs** a message, which shows RabbitMQ **redelivering** that message to the other worker.
 - Workers are **idempotent**. They share a record of processed `event_id`s, so a repeated event is detected, its business action is skipped, and it is ACKed.
 
+## Architecture
+
 ```
                        durable queue "orders"
  ┌──────────────┐   persistent JSON messages   ┌─────────────────────┐
@@ -113,11 +115,62 @@ The full, unedited output of the run below is in [`evidence/`](evidence/):
 - [`producer.log`](evidence/producer.log)
 - [`processed_events.json`](evidence/processed_events.json)
 
-In this run **Worker-2** received `evt-fail` first and crashed. The excerpts below leave out the `[Worker-N]` console prefix and some column padding; the files are untouched.
+In this run **Worker-2** received `evt-fail` first and crashed. The *Successful message processing* and *Competing consumers* log blocks are copied verbatim from [`evidence/demo_run.txt`](evidence/demo_run.txt). The excerpts in sections 2–4 leave out the `[Worker-N]` console prefix and some column padding. The files themselves are untouched.
+
+**Where to find each requirement:**
+
+| Requirement | Section |
+|---|---|
+| Running RabbitMQ, the producer and the workers | [Setup](#setup), [Quick start](#quick-start-one-command-demo), [Manual demo](#manual-demo-separate-terminals) |
+| Architecture diagram | [Architecture](#architecture) |
+| Successful message processing, ACK after processing | [Successful message processing](#successful-message-processing) |
+| Two competing consumers | [1. Competing consumers](#1-competing-consumers-each-message-goes-to-one-worker) |
+| Failure before ACK, redelivery with `redelivered=True`, system keeps running | [2. Failure before ACK, then redelivery](#2-failure-before-ack-then-redelivery) |
+| Duplicate detected, business action skipped | [3. Duplicate event](#3-duplicate-event-across-two-workers-business-action-runs-once), [4. Replay after restart](#4-replay-after-restart-the-store-is-persistent-and-shared) |
+| Reflection | [Reflection](#reflection) |
+
+### Successful message processing
+
+One normal order (`evt-0011`) handled by Worker-1. These are raw lines from [`evidence/demo_run.txt`](evidence/demo_run.txt), and the same lines appear in [`evidence/worker-1.log`](evidence/worker-1.log):
+
+```
+  [Worker-1] 18:21:04.290 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0011 order_id=ord-1011 redelivered=False
+  [Worker-1] 18:21:04.291 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0011 order_id=ord-1011 redelivered=False
+  [Worker-1] 18:21:04.799 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0011 order_id=ord-1011 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+```
+
+The worker logs `RECEIVED` when the message arrives and `PROCESSING` when it starts the business action (reserving stock and calculating the total). Only after that action has finished does it send the ACK, which is why the `COMPLETED` line, logged right after `basic_ack`, shows `business_action=EXECUTED acked=True`. Until then, the message stays *Unacked* in RabbitMQ. If the worker had died before this point, the message would have been redelivered (see section 2).
 
 ### 1. Competing consumers: each message goes to one worker
 
-Each new event is delivered to exactly one worker (summary table printed by `demo.py`). With `prefetch_count=1`, the idle worker picks up the next message as soon as it has ACKed the current one.
+Worker-1 and Worker-2 are **separate OS processes**, each with its own connection to RabbitMQ, and both consume from the **same queue**, `orders`. The raw, interleaved output below covers step 5 of the demo, when both workers are running (copied verbatim from [`evidence/demo_run.txt`](evidence/demo_run.txt)):
+
+```
+  [Worker-1] 18:21:04.290 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0011 order_id=ord-1011 redelivered=False
+  [Worker-1] 18:21:04.291 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0011 order_id=ord-1011 redelivered=False
+  [Producer] 18:21:04.292 | Producer  | status=PUBLISHED event_id=evt-0011 order_id=ord-1011 item_id=item-webcam quantity=1
+  [Worker-2] 18:21:04.293 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0012 order_id=ord-1012 redelivered=False
+  [Worker-2] 18:21:04.293 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0012 order_id=ord-1012 redelivered=False
+  [Producer] 18:21:04.293 | Producer  | status=PUBLISHED event_id=evt-0012 order_id=ord-1012 item_id=item-keyboard quantity=3
+  [Producer] 18:21:04.295 | Producer  | status=PUBLISHED event_id=evt-0013 order_id=ord-1013 item_id=item-mouse quantity=2
+  [Producer] 18:21:04.296 | Producer  | status=PUBLISHED event_id=evt-0014 order_id=ord-1014 item_id=item-mouse quantity=1
+  [Producer] 18:21:04.296 | Producer  | Published 4 message(s) to queue 'orders'
+  [Worker-1] 18:21:04.799 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0011 order_id=ord-1011 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:04.802 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0013 order_id=ord-1013 redelivered=False
+  [Worker-2] 18:21:04.802 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0012 order_id=ord-1012 redelivered=False reserved=3xitem-keyboard total=$225 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:04.802 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0013 order_id=ord-1013 redelivered=False
+  [Worker-2] 18:21:04.804 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0014 order_id=ord-1014 redelivered=False
+  [Worker-2] 18:21:04.804 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0014 order_id=ord-1014 redelivered=False
+  [Worker-1] 18:21:05.309 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0013 order_id=ord-1013 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+  [Worker-2] 18:21:05.311 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0014 order_id=ord-1014 redelivered=False reserved=1xitem-mouse total=$49 business_action=EXECUTED acked=True
+```
+
+- **Worker-1** received and completed `evt-0011` and `evt-0013`.
+- **Worker-2** received and completed `evt-0012` and `evt-0014`.
+- In normal processing each message is delivered to **only one** worker. No `event_id` appears in both workers' output.
+- The workers use `basic_qos(prefetch_count=1)` (fair dispatch). RabbitMQ never gives a worker a second message while it still has one unacknowledged, so a busy worker receives nothing new until it ACKs. Here Worker-1 receives `evt-0013` only after it has ACKed `evt-0011`, and Worker-2 receives `evt-0014` only after it has ACKed `evt-0012`.
+
+The summary table printed by `demo.py` for the whole run confirms that each event was executed by exactly one worker:
 
 ```
 event_id       received by (R = redelivered)              executed by  duplicate skipped by
@@ -320,6 +373,10 @@ on message:
 **Known limitations, and what a production system would use instead:**
 - The file store only works for workers on the **same machine** that share the `state/` folder. Workers on several hosts would use a shared database, such as a table with a `UNIQUE(event_id)` constraint, or Redis `SET NX`.
 - A crash *after* the business action but *before* the record is written can still cause the action to run twice. Closing that gap needs the action and the record to be written in **one transaction**, for example the database update and the processed-event insert committed together.
+
+## Reflection
+
+RabbitMQ provides at-least-once delivery, so a message can be delivered more than once if a worker crashes or loses its connection before RabbitMQ receives the ACK. A producer retry can also publish the same event more than once. Idempotent handling records each processed `event_id` and skips the business action when that ID is received again. This prevents duplicate side effects while still acknowledging the repeated message.
 
 ## Other design notes
 
