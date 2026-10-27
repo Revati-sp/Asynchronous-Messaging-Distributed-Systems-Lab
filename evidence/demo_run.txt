@@ -1,0 +1,127 @@
+18:20:58.811 | Demo      | Step 1: purge queue and reset the processed-events store for a reproducible run
+18:20:58.823 | Demo      | Purged 0 leftover message(s) from 'orders'
+18:20:58.825 | Demo      | Step 2: start two independent worker processes
+  [Worker-1] 18:20:58.885 | Worker-1  | worker=Worker-1 status=READY      queue=orders prefetch=1 work_seconds=0.50 fail_on_event=evt-fail store=state/processed_events.json known_processed_events=0
+  [Worker-2] 18:20:58.885 | Worker-2  | worker=Worker-2 status=READY      queue=orders prefetch=1 work_seconds=0.50 fail_on_event=evt-fail store=state/processed_events.json known_processed_events=0
+18:20:58.933 | Demo      | Step 3: publish 10 orders plus 'evt-fail'
+  [Worker-2] 18:20:58.996 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0001 order_id=ord-1001 redelivered=False
+  [Worker-2] 18:20:58.996 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0001 order_id=ord-1001 redelivered=False
+  [Producer] 18:20:58.997 | Producer  | status=PUBLISHED event_id=evt-0001 order_id=ord-1001 item_id=item-webcam quantity=1
+  [Worker-1] 18:20:58.998 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0002 order_id=ord-1002 redelivered=False
+  [Worker-1] 18:20:58.998 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0002 order_id=ord-1002 redelivered=False
+  [Producer] 18:20:58.999 | Producer  | status=PUBLISHED event_id=evt-0002 order_id=ord-1002 item_id=item-keyboard quantity=3
+  [Producer] 18:20:59.000 | Producer  | status=PUBLISHED event_id=evt-fail order_id=ord-9999 item_id=item-keyboard quantity=5
+  [Producer] 18:20:59.001 | Producer  | status=PUBLISHED event_id=evt-0003 order_id=ord-1003 item_id=item-mouse quantity=2
+  [Producer] 18:20:59.002 | Producer  | status=PUBLISHED event_id=evt-0004 order_id=ord-1004 item_id=item-mouse quantity=1
+  [Producer] 18:20:59.003 | Producer  | status=PUBLISHED event_id=evt-0005 order_id=ord-1005 item_id=item-webcam quantity=5
+  [Producer] 18:20:59.005 | Producer  | status=PUBLISHED event_id=evt-0006 order_id=ord-1006 item_id=item-keyboard quantity=5
+  [Producer] 18:20:59.005 | Producer  | status=PUBLISHED event_id=evt-0007 order_id=ord-1007 item_id=item-laptop quantity=1
+  [Producer] 18:20:59.006 | Producer  | status=PUBLISHED event_id=evt-0008 order_id=ord-1008 item_id=item-keyboard quantity=1
+  [Producer] 18:20:59.007 | Producer  | status=PUBLISHED event_id=evt-0009 order_id=ord-1009 item_id=item-mouse quantity=2
+  [Producer] 18:20:59.008 | Producer  | status=PUBLISHED event_id=evt-0010 order_id=ord-1010 item_id=item-headset quantity=5
+  [Producer] 18:20:59.008 | Producer  | Published 11 message(s) to queue 'orders'
+18:20:59.013 | Demo      | Step 4: wait for a worker to crash on 'evt-fail' and for redelivery
+  [Worker-2] 18:20:59.504 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0001 order_id=ord-1001 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+  [Worker-1] 18:20:59.505 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0002 order_id=ord-1002 redelivered=False reserved=3xitem-keyboard total=$225 business_action=EXECUTED acked=True
+  [Worker-2] 18:20:59.506 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-fail order_id=ord-9999 redelivered=False
+  [Worker-2] 18:20:59.506 | Worker-2  | worker=Worker-2 status=CRASHING   event_id=evt-fail order_id=ord-9999 redelivered=False reason=--fail-on-event (exiting BEFORE ack)
+  [Worker-1] 18:20:59.506 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0003 order_id=ord-1003 redelivered=False
+  [Worker-1] 18:20:59.507 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0003 order_id=ord-1003 redelivered=False
+18:20:59.630 | Demo      | Worker-2 exited with code 3 (no ACK sent)
+  [Worker-1] 18:21:00.014 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0003 order_id=ord-1003 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:00.016 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-fail order_id=ord-9999 redelivered=True
+  [Worker-1] 18:21:00.017 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-fail order_id=ord-9999 redelivered=True
+  [Worker-1] 18:21:00.523 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-fail order_id=ord-9999 redelivered=True reserved=5xitem-keyboard total=$375 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:00.524 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0004 order_id=ord-1004 redelivered=False
+  [Worker-1] 18:21:00.525 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0004 order_id=ord-1004 redelivered=False
+  [Worker-1] 18:21:01.026 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0004 order_id=ord-1004 redelivered=False reserved=1xitem-mouse total=$49 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:01.027 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0005 order_id=ord-1005 redelivered=False
+  [Worker-1] 18:21:01.028 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0005 order_id=ord-1005 redelivered=False
+  [Worker-1] 18:21:01.535 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0005 order_id=ord-1005 redelivered=False reserved=5xitem-webcam total=$145 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:01.540 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0006 order_id=ord-1006 redelivered=False
+  [Worker-1] 18:21:01.541 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0006 order_id=ord-1006 redelivered=False
+  [Worker-1] 18:21:02.051 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0006 order_id=ord-1006 redelivered=False reserved=5xitem-keyboard total=$375 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:02.063 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0007 order_id=ord-1007 redelivered=False
+  [Worker-1] 18:21:02.064 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0007 order_id=ord-1007 redelivered=False
+  [Worker-1] 18:21:02.566 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0007 order_id=ord-1007 redelivered=False reserved=1xitem-laptop total=$62 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:02.569 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0008 order_id=ord-1008 redelivered=False
+  [Worker-1] 18:21:02.569 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0008 order_id=ord-1008 redelivered=False
+  [Worker-1] 18:21:03.076 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0008 order_id=ord-1008 redelivered=False reserved=1xitem-keyboard total=$75 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:03.078 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0009 order_id=ord-1009 redelivered=False
+  [Worker-1] 18:21:03.079 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0009 order_id=ord-1009 redelivered=False
+  [Worker-1] 18:21:03.584 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0009 order_id=ord-1009 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:03.587 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0010 order_id=ord-1010 redelivered=False
+  [Worker-1] 18:21:03.588 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0010 order_id=ord-1010 redelivered=False
+  [Worker-1] 18:21:04.094 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0010 order_id=ord-1010 redelivered=False reserved=5xitem-headset total=$250 business_action=EXECUTED acked=True
+18:21:04.117 | Demo      | Batch 1 fully processed by the surviving worker(s) - the system kept running
+18:21:04.118 | Demo      | Step 5: restart Worker-2 and publish 4 new orders
+  [Worker-2] 18:21:04.205 | Worker-2  | worker=Worker-2 status=READY      queue=orders prefetch=1 work_seconds=0.50 fail_on_event=evt-fail store=state/processed_events.json known_processed_events=11
+  [Worker-1] 18:21:04.290 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0011 order_id=ord-1011 redelivered=False
+  [Worker-1] 18:21:04.291 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0011 order_id=ord-1011 redelivered=False
+  [Producer] 18:21:04.292 | Producer  | status=PUBLISHED event_id=evt-0011 order_id=ord-1011 item_id=item-webcam quantity=1
+  [Worker-2] 18:21:04.293 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0012 order_id=ord-1012 redelivered=False
+  [Worker-2] 18:21:04.293 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0012 order_id=ord-1012 redelivered=False
+  [Producer] 18:21:04.293 | Producer  | status=PUBLISHED event_id=evt-0012 order_id=ord-1012 item_id=item-keyboard quantity=3
+  [Producer] 18:21:04.295 | Producer  | status=PUBLISHED event_id=evt-0013 order_id=ord-1013 item_id=item-mouse quantity=2
+  [Producer] 18:21:04.296 | Producer  | status=PUBLISHED event_id=evt-0014 order_id=ord-1014 item_id=item-mouse quantity=1
+  [Producer] 18:21:04.296 | Producer  | Published 4 message(s) to queue 'orders'
+  [Worker-1] 18:21:04.799 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0011 order_id=ord-1011 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:04.802 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0013 order_id=ord-1013 redelivered=False
+  [Worker-2] 18:21:04.802 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0012 order_id=ord-1012 redelivered=False reserved=3xitem-keyboard total=$225 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:04.802 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0013 order_id=ord-1013 redelivered=False
+  [Worker-2] 18:21:04.804 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0014 order_id=ord-1014 redelivered=False
+  [Worker-2] 18:21:04.804 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0014 order_id=ord-1014 redelivered=False
+  [Worker-1] 18:21:05.309 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0013 order_id=ord-1013 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+  [Worker-2] 18:21:05.311 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0014 order_id=ord-1014 redelivered=False reserved=1xitem-mouse total=$49 business_action=EXECUTED acked=True
+18:21:05.315 | Demo      | Step 6: publish 2 identical copies of 'evt-duplicate' while both workers are idle
+  [Worker-2] 18:21:05.390 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-duplicate order_id=ord-8888 redelivered=False
+  [Worker-2] 18:21:05.390 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-duplicate order_id=ord-8888 redelivered=False
+  [Producer] 18:21:05.390 | Producer  | status=PUBLISHED event_id=evt-duplicate order_id=ord-8888 item_id=item-webcam quantity=1
+  [Worker-1] 18:21:05.391 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-duplicate order_id=ord-8888 redelivered=False
+  [Producer] 18:21:05.392 | Producer  | status=PUBLISHED event_id=evt-duplicate order_id=ord-8888 item_id=item-webcam quantity=1
+  [Producer] 18:21:05.392 | Producer  | Published 2 message(s) to queue 'orders'
+  [Worker-2] 18:21:05.898 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-duplicate order_id=ord-8888 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+  [Worker-1] 18:21:05.899 | Worker-1  | worker=Worker-1 status=DUPLICATE  event_id=evt-duplicate order_id=ord-8888 redelivered=False business_action=SKIPPED first_processed_by=Worker-2 acked=True
+18:21:06.009 | Demo      | Step 7: replay already-processed evt-0001, evt-0002 (same event_id and payload)
+  [Worker-2] 18:21:06.095 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0001 order_id=ord-1001 redelivered=False
+  [Worker-2] 18:21:06.095 | Worker-2  | worker=Worker-2 status=DUPLICATE  event_id=evt-0001 order_id=ord-1001 redelivered=False business_action=SKIPPED first_processed_by=Worker-2 acked=True
+  [Producer] 18:21:06.096 | Producer  | status=PUBLISHED event_id=evt-0001 order_id=ord-1001 item_id=item-webcam quantity=1
+  [Worker-1] 18:21:06.097 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0002 order_id=ord-1002 redelivered=False
+  [Worker-1] 18:21:06.097 | Worker-1  | worker=Worker-1 status=DUPLICATE  event_id=evt-0002 order_id=ord-1002 redelivered=False business_action=SKIPPED first_processed_by=Worker-1 acked=True
+  [Producer] 18:21:06.097 | Producer  | status=PUBLISHED event_id=evt-0002 order_id=ord-1002 item_id=item-keyboard quantity=3
+  [Producer] 18:21:06.097 | Producer  | Published 2 message(s) to queue 'orders'
+  [Worker-1] 18:21:06.103 | Worker-1  | worker=Worker-1 status=STOPPING  processed=12 duplicates_skipped=2
+  [Worker-2] 18:21:06.112 | Worker-2  | worker=Worker-2 status=STOPPING  processed=3 duplicates_skipped=1
+
+================================================================================================
+event_id       received by (R = redelivered)              executed by  duplicate skipped by
+------------------------------------------------------------------------------------------------
+evt-0001       Worker-2(-), Worker-2(-)                   Worker-2     Worker-2
+evt-0002       Worker-1(-), Worker-1(-)                   Worker-1     Worker-1
+evt-0003       Worker-1(-)                                Worker-1     -
+evt-0004       Worker-1(-)                                Worker-1     -
+evt-0005       Worker-1(-)                                Worker-1     -
+evt-0006       Worker-1(-)                                Worker-1     -
+evt-0007       Worker-1(-)                                Worker-1     -
+evt-0008       Worker-1(-)                                Worker-1     -
+evt-0009       Worker-1(-)                                Worker-1     -
+evt-0010       Worker-1(-)                                Worker-1     -
+evt-0011       Worker-1(-)                                Worker-1     -
+evt-0012       Worker-2(-)                                Worker-2     -
+evt-0013       Worker-1(-)                                Worker-1     -
+evt-0014       Worker-2(-)                                Worker-2     -
+evt-duplicate  Worker-2(-), Worker-1(-)                   Worker-2     Worker-1
+evt-fail       Worker-2(-), Worker-1(R)                   Worker-1     -
+================================================================================================
+  [INFO] evt-duplicate copies were delivered to: Worker-1, Worker-2 (cross-worker duplicate)
+  [PASS] business action executed exactly once per event_id
+  [PASS] no unexpected events completed
+  [PASS] both workers processed orders {'Worker-2': 4, 'Worker-1': 12}
+  [PASS] evt-fail first received by Worker-2 (redelivered=False)
+  [PASS] evt-fail redelivered to the other worker (redelivered=True)
+  [PASS] evt-fail completed by the surviving worker
+  [PASS] evt-duplicate: 2 copies received, executed once, skipped once
+  [PASS] replayed evt-0001, evt-0002 after restart detected as DUPLICATE (not re-executed)
+  [PASS] state/processed_events.json records all 16 processed event_ids
+
+Result: ALL CHECKS PASSED  (logs in logs/)

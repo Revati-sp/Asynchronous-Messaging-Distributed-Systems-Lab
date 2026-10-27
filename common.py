@@ -31,8 +31,9 @@ def setup_logging(name: str) -> logging.Logger:
         datefmt="%H:%M:%S",
         stream=sys.stdout,
     )
-    # pika is very chatty at INFO; keep its warnings only.
-    logging.getLogger("pika").setLevel(logging.WARNING)
+    # pika logs every failed connect attempt with a traceback; connect() already reports
+    # retries in one line and every real failure surfaces as an exception, so mute pika.
+    logging.getLogger("pika").setLevel(logging.CRITICAL)
     return logging.getLogger(name)
 
 

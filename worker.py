@@ -3,7 +3,10 @@
 Each worker:
   * uses manual acknowledgements (auto_ack=False),
   * uses prefetch_count=1 (fair dispatch) so a busy worker is not handed more work,
-  * ACKs a message only after the simulated business action has finished.
+  * ACKs a message only after the simulated business action has finished,
+  * is idempotent: processed event_ids are recorded in a file shared by all workers
+    (see idempotency.py); a repeated event_id is logged as DUPLICATE, the business
+    action is skipped, and the message is ACKed.
 
 Failure demo:
     python worker.py --name Worker-1 --fail-on-event evt-fail
@@ -28,19 +31,23 @@ import time
 from pika.exceptions import AMQPConnectionError, ConnectionClosedByBroker
 
 from common import QUEUE_NAME, REQUIRED_FIELDS, connect, declare_queue, setup_logging
+from idempotency import ProcessedEventStore
 
 # Exit code used when the worker deliberately crashes for the failure demo.
 CRASH_EXIT_CODE = 3
 
 
 class OrderWorker:
-    def __init__(self, name: str, fail_on_event: str | None, work_seconds: float, prefetch: int):
+    def __init__(self, name: str, fail_on_event: str | None, work_seconds: float, prefetch: int,
+                 store: ProcessedEventStore):
         self.name = name
         self.fail_on_event = fail_on_event
         self.work_seconds = work_seconds
         self.prefetch = prefetch
         self.log = setup_logging(name)
+        self.store = store
         self.processed = 0
+        self.duplicates = 0
         self.connection = None
         self.channel = None
 
@@ -87,12 +94,27 @@ class OrderWorker:
             # Hard exit: no ack, no clean channel close -> broker requeues the message.
             os._exit(CRASH_EXIT_CODE)
 
-        self._event("PROCESSING", order, method)
-        result = self.process_order(order)
+        event_id = order["event_id"]
+        # Per-event lock: if another worker is processing a copy of this same event right
+        # now, wait for it to finish, then the check below sees it as already processed.
+        with self.store.event_lock(event_id):
+            if self.store.is_processed(event_id):
+                first = self.store.get(event_id) or {}
+                channel.basic_ack(delivery_tag=method.delivery_tag)
+                self.duplicates += 1
+                self._event("DUPLICATE", order, method,
+                            f"business_action=SKIPPED first_processed_by={first.get('worker')} acked=True")
+                return
+
+            self._event("PROCESSING", order, method)
+            result = self.process_order(order)
+            # Record BEFORE acking: a crash between the two leads to a redelivery that is
+            # detected as a duplicate, instead of the business action running twice.
+            self.store.mark_processed(event_id, self.name, result)
         # ACK only after processing has fully finished.
         channel.basic_ack(delivery_tag=method.delivery_tag)
         self.processed += 1
-        self._event("COMPLETED", order, method, f"{result} acked=True")
+        self._event("COMPLETED", order, method, f"{result} business_action=EXECUTED acked=True")
 
     # ---- lifecycle ------------------------------------------------------------
     def run(self) -> None:
@@ -102,14 +124,18 @@ class OrderWorker:
         # Fair dispatch: at most `prefetch` unacked messages per worker.
         self.channel.basic_qos(prefetch_count=self.prefetch)
         self.channel.basic_consume(queue=QUEUE_NAME, on_message_callback=self.on_message, auto_ack=False)
+        known = self.store.load()
         self.log.info(
-            "worker=%s status=READY      queue=%s prefetch=%d work_seconds=%.2f fail_on_event=%s",
+            "worker=%s status=READY      queue=%s prefetch=%d work_seconds=%.2f fail_on_event=%s "
+            "store=%s known_processed_events=%d",
             self.name, QUEUE_NAME, self.prefetch, self.work_seconds, self.fail_on_event,
+            self.store.path, known,
         )
         self.channel.start_consuming()
 
     def stop(self) -> None:
-        self.log.info("worker=%s status=STOPPING  processed=%d", self.name, self.processed)
+        self.log.info("worker=%s status=STOPPING  processed=%d duplicates_skipped=%d",
+                      self.name, self.processed, self.duplicates)
         if self.channel is not None and self.channel.is_open:
             self.channel.stop_consuming()
 
@@ -128,9 +154,12 @@ def main() -> None:
     parser.add_argument("--work-seconds", type=float, default=float(os.getenv("WORK_SECONDS", "1.0")),
                         help="simulated processing time per order (default 1.0)")
     parser.add_argument("--prefetch", type=int, default=1, help="basic.qos prefetch_count (default 1)")
+    parser.add_argument("--state-dir", default=os.getenv("STATE_DIR", "state"),
+                        help="directory of the shared processed-events store (env STATE_DIR, default ./state)")
     args = parser.parse_args()
 
-    worker = OrderWorker(args.name, args.fail_on_event, args.work_seconds, args.prefetch)
+    store = ProcessedEventStore(args.state_dir)
+    worker = OrderWorker(args.name, args.fail_on_event, args.work_seconds, args.prefetch, store)
     signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
 
     try:

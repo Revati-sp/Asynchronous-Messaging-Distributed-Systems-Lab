@@ -1,0 +1,19 @@
+18:20:58.885 | Worker-2  | worker=Worker-2 status=READY      queue=orders prefetch=1 work_seconds=0.50 fail_on_event=evt-fail store=state/processed_events.json known_processed_events=0
+18:20:58.996 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0001 order_id=ord-1001 redelivered=False
+18:20:58.996 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0001 order_id=ord-1001 redelivered=False
+18:20:59.504 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0001 order_id=ord-1001 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+18:20:59.506 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-fail order_id=ord-9999 redelivered=False
+18:20:59.506 | Worker-2  | worker=Worker-2 status=CRASHING   event_id=evt-fail order_id=ord-9999 redelivered=False reason=--fail-on-event (exiting BEFORE ack)
+18:21:04.205 | Worker-2  | worker=Worker-2 status=READY      queue=orders prefetch=1 work_seconds=0.50 fail_on_event=evt-fail store=state/processed_events.json known_processed_events=11
+18:21:04.293 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0012 order_id=ord-1012 redelivered=False
+18:21:04.293 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0012 order_id=ord-1012 redelivered=False
+18:21:04.802 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0012 order_id=ord-1012 redelivered=False reserved=3xitem-keyboard total=$225 business_action=EXECUTED acked=True
+18:21:04.804 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0014 order_id=ord-1014 redelivered=False
+18:21:04.804 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-0014 order_id=ord-1014 redelivered=False
+18:21:05.311 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-0014 order_id=ord-1014 redelivered=False reserved=1xitem-mouse total=$49 business_action=EXECUTED acked=True
+18:21:05.390 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-duplicate order_id=ord-8888 redelivered=False
+18:21:05.390 | Worker-2  | worker=Worker-2 status=PROCESSING event_id=evt-duplicate order_id=ord-8888 redelivered=False
+18:21:05.898 | Worker-2  | worker=Worker-2 status=COMPLETED  event_id=evt-duplicate order_id=ord-8888 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+18:21:06.095 | Worker-2  | worker=Worker-2 status=RECEIVED   event_id=evt-0001 order_id=ord-1001 redelivered=False
+18:21:06.095 | Worker-2  | worker=Worker-2 status=DUPLICATE  event_id=evt-0001 order_id=ord-1001 redelivered=False business_action=SKIPPED first_processed_by=Worker-2 acked=True
+18:21:06.112 | Worker-2  | worker=Worker-2 status=STOPPING  processed=3 duplicates_skipped=1

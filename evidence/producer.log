@@ -1,0 +1,23 @@
+18:20:58.997 | Producer  | status=PUBLISHED event_id=evt-0001 order_id=ord-1001 item_id=item-webcam quantity=1
+18:20:58.999 | Producer  | status=PUBLISHED event_id=evt-0002 order_id=ord-1002 item_id=item-keyboard quantity=3
+18:20:59.000 | Producer  | status=PUBLISHED event_id=evt-fail order_id=ord-9999 item_id=item-keyboard quantity=5
+18:20:59.001 | Producer  | status=PUBLISHED event_id=evt-0003 order_id=ord-1003 item_id=item-mouse quantity=2
+18:20:59.002 | Producer  | status=PUBLISHED event_id=evt-0004 order_id=ord-1004 item_id=item-mouse quantity=1
+18:20:59.003 | Producer  | status=PUBLISHED event_id=evt-0005 order_id=ord-1005 item_id=item-webcam quantity=5
+18:20:59.005 | Producer  | status=PUBLISHED event_id=evt-0006 order_id=ord-1006 item_id=item-keyboard quantity=5
+18:20:59.005 | Producer  | status=PUBLISHED event_id=evt-0007 order_id=ord-1007 item_id=item-laptop quantity=1
+18:20:59.006 | Producer  | status=PUBLISHED event_id=evt-0008 order_id=ord-1008 item_id=item-keyboard quantity=1
+18:20:59.007 | Producer  | status=PUBLISHED event_id=evt-0009 order_id=ord-1009 item_id=item-mouse quantity=2
+18:20:59.008 | Producer  | status=PUBLISHED event_id=evt-0010 order_id=ord-1010 item_id=item-headset quantity=5
+18:20:59.008 | Producer  | Published 11 message(s) to queue 'orders'
+18:21:04.292 | Producer  | status=PUBLISHED event_id=evt-0011 order_id=ord-1011 item_id=item-webcam quantity=1
+18:21:04.293 | Producer  | status=PUBLISHED event_id=evt-0012 order_id=ord-1012 item_id=item-keyboard quantity=3
+18:21:04.295 | Producer  | status=PUBLISHED event_id=evt-0013 order_id=ord-1013 item_id=item-mouse quantity=2
+18:21:04.296 | Producer  | status=PUBLISHED event_id=evt-0014 order_id=ord-1014 item_id=item-mouse quantity=1
+18:21:04.296 | Producer  | Published 4 message(s) to queue 'orders'
+18:21:05.390 | Producer  | status=PUBLISHED event_id=evt-duplicate order_id=ord-8888 item_id=item-webcam quantity=1
+18:21:05.392 | Producer  | status=PUBLISHED event_id=evt-duplicate order_id=ord-8888 item_id=item-webcam quantity=1
+18:21:05.392 | Producer  | Published 2 message(s) to queue 'orders'
+18:21:06.096 | Producer  | status=PUBLISHED event_id=evt-0001 order_id=ord-1001 item_id=item-webcam quantity=1
+18:21:06.097 | Producer  | status=PUBLISHED event_id=evt-0002 order_id=ord-1002 item_id=item-keyboard quantity=3
+18:21:06.097 | Producer  | Published 2 message(s) to queue 'orders'

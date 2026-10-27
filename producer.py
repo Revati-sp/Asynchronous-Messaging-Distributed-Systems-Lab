@@ -24,7 +24,8 @@ ITEMS = ["item-keyboard", "item-mouse", "item-monitor", "item-laptop", "item-hea
 log = setup_logging("Producer")
 
 
-def build_orders(count: int, start: int, fail_event: str | None, fail_position: int, seed: int) -> list[dict]:
+def build_orders(count: int, start: int, fail_event: str | None, fail_position: int, seed: int,
+                 duplicate_event: str | None = None, duplicate_copies: int = 2) -> list[dict]:
     """Build a deterministic list of orders (same seed -> same items/quantities)."""
     rng = random.Random(seed)
     orders = []
@@ -47,6 +48,17 @@ def build_orders(count: int, start: int, fail_event: str | None, fail_position: 
         }
         position = max(0, min(fail_position - 1, len(orders)))
         orders.insert(position, fail_order)
+    if duplicate_event:
+        # The SAME event (identical payload) published several times, as happens when an
+        # upstream service retries a publish. Workers must run the business action once.
+        duplicate_order = {
+            "event_id": duplicate_event,
+            "order_id": "ord-8888",
+            "item_id": rng.choice(ITEMS),
+            "quantity": rng.randint(1, 5),
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        orders.extend(dict(duplicate_order) for _ in range(duplicate_copies))
     return orders
 
 
@@ -58,11 +70,16 @@ def main() -> None:
                         help="also publish one order with this event_id (used for the failure demo)")
     parser.add_argument("--fail-position", type=int, default=3,
                         help="1-based position of the fail event in the batch (default 3)")
+    parser.add_argument("--duplicate-event", metavar="EVENT_ID", default=None,
+                        help="also publish one order with this event_id several times (duplicate demo)")
+    parser.add_argument("--duplicate-copies", type=int, default=2,
+                        help="how many identical copies of the duplicate event to publish (default 2)")
     parser.add_argument("--delay", type=float, default=0.0, help="seconds to wait between messages")
     parser.add_argument("--seed", type=int, default=42, help="random seed for item/quantity values")
     args = parser.parse_args()
 
-    orders = build_orders(args.count, args.start, args.fail_event, args.fail_position, args.seed)
+    orders = build_orders(args.count, args.start, args.fail_event, args.fail_position, args.seed,
+                          args.duplicate_event, args.duplicate_copies)
 
     connection = connect(log)
     channel = connection.channel()

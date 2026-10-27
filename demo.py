@@ -1,18 +1,20 @@
-"""End-to-end, reproducible demonstration of competing consumers and redelivery.
+"""End-to-end, reproducible demonstration of competing consumers, redelivery and
+idempotent duplicate handling.
 
 What it does (each component runs as its own OS process):
-  1. Purges the order queue so the run starts clean.
+  1. Purges the order queue and resets the processed-events store (./state).
   2. Starts Worker-1 and Worker-2, both with --fail-on-event evt-fail.
-  3. Runs the producer: 10 orders + evt-fail.
+  3. Runs the producer: evt-0001..evt-0010 plus evt-fail.
   4. Whichever worker receives evt-fail first crashes BEFORE acking; RabbitMQ
      redelivers it to the surviving worker, which completes it.
-  5. Restarts the crashed worker (same name) and publishes a second batch to show
-     the system keeps running and the restarted worker rejoins.
-  6. Parses the worker logs and verifies:
-       - every event was COMPLETED exactly once (no duplicates, nothing lost),
-       - both workers did work (competing consumers),
-       - evt-fail was received twice, by two different workers, the second time
-         with redelivered=True, and was completed by the worker that did NOT crash.
+  5. Restarts the crashed worker (it reloads the store from disk) and publishes a
+     second batch, so both workers are consuming again.
+  6. Publishes two identical copies of evt-duplicate while both workers are idle, so
+     each worker normally gets one copy at the same moment. The business action must
+     run once; the other copy is logged as DUPLICATE, skipped and ACKed.
+  7. Replays evt-0001/evt-0002 (already processed) - they must be detected as
+     duplicates, proving the store is persistent and shared by both workers.
+  8. Parses the worker logs and the store file and verifies the outcome.
 
 Usage:
     docker compose up -d
@@ -23,19 +25,25 @@ Logs are written to ./logs/. Exit code 0 means every check passed.
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import shutil
 import subprocess
 import sys
 import threading
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from common import QUEUE_NAME, connect, declare_queue, setup_logging
 
 ROOT = Path(__file__).resolve().parent
 LOG_DIR = ROOT / "logs"
+STATE_DIR = ROOT / "state"
+STORE_FILE = STATE_DIR / "processed_events.json"
 FAIL_EVENT = "evt-fail"
+DUPLICATE_EVENT = "evt-duplicate"
+REPLAYED = ["evt-0001", "evt-0002"]
 LINE_RE = re.compile(r"^(\S+) .*worker=(\S+) status=(\S+)\s+event_id=(\S+) order_id=(\S+) redelivered=(True|False)")
 
 log = setup_logging("Demo")
@@ -107,23 +115,34 @@ def parse_events(log_files: list[Path]) -> list[tuple[str, str, str, bool]]:
     return [e[1:] for e in sorted(events)]
 
 
-def completed_ids(workers: list[ManagedProcess]) -> set[str]:
-    done = set()
+def status_counts(workers: list[ManagedProcess], status: str) -> Counter:
+    counts = Counter()
     for w in workers:
         for line in list(w.lines):
             m = LINE_RE.search(line)
-            if m and m.group(3) == "COMPLETED":
-                done.add(m.group(4))
-    return done
+            if m and m.group(3) == status:
+                counts[m.group(4)] += 1
+    return counts
 
 
-def wait_until_completed(expected: set[str], workers: list[ManagedProcess], timeout: float) -> bool:
+def wait_for_statuses(workers: list[ManagedProcess], completed: set[str], duplicates: Counter,
+                      timeout: float) -> bool:
+    """Wait until every id in `completed` is COMPLETED and each id in `duplicates`
+    has been logged as DUPLICATE at least the given number of times."""
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if expected <= completed_ids(workers):
+        done = status_counts(workers, "COMPLETED")
+        dups = status_counts(workers, "DUPLICATE")
+        if completed <= set(done) and all(dups[e] >= n for e, n in duplicates.items()):
             return True
         time.sleep(0.2)
     return False
+
+
+def run_producer(args: list[str]) -> None:
+    producer = ManagedProcess("Producer", ["producer.py", *args])
+    producer.proc.wait()
+    producer.stop()
 
 
 def main() -> int:
@@ -137,13 +156,14 @@ def main() -> int:
     for old in LOG_DIR.glob("*.log"):
         old.unlink()
 
-    log.info("Step 1: purge queue for a clean, reproducible run")
+    log.info("Step 1: purge queue and reset the processed-events store for a reproducible run")
     purge_queue()
+    shutil.rmtree(STATE_DIR, ignore_errors=True)
 
     log.info("Step 2: start two independent worker processes")
     def worker_args(name: str) -> list[str]:
         return ["worker.py", "--name", name, "--fail-on-event", FAIL_EVENT,
-                "--work-seconds", str(args.work_seconds)]
+                "--work-seconds", str(args.work_seconds), "--state-dir", str(STATE_DIR.relative_to(ROOT))]
 
     workers = {name: ManagedProcess(name, worker_args(name)) for name in ("Worker-1", "Worker-2")}
     all_procs: list[ManagedProcess] = list(workers.values())
@@ -154,9 +174,7 @@ def main() -> int:
                 return 1
 
         log.info("Step 3: publish %d orders plus '%s'", args.count, FAIL_EVENT)
-        producer = ManagedProcess("Producer", ["producer.py", "--count", str(args.count), "--fail-event", FAIL_EVENT])
-        producer.proc.wait()
-        producer.stop()
+        run_producer(["--count", str(args.count), "--fail-event", FAIL_EVENT])
 
         log.info("Step 4: wait for a worker to crash on '%s' and for redelivery", FAIL_EVENT)
         batch1 = {f"evt-{i:04d}" for i in range(1, args.count + 1)} | {FAIL_EVENT}
@@ -172,12 +190,12 @@ def main() -> int:
             return 1
         log.info("%s exited with code %s (no ACK sent)", crashed, workers[crashed].proc.returncode)
 
-        if not wait_until_completed(batch1, all_procs, timeout=120):
+        if not wait_for_statuses(all_procs, batch1, Counter(), timeout=120):
             log.error("Batch 1 did not complete in time")
             return 1
         log.info("Batch 1 fully processed by the surviving worker(s) - the system kept running")
 
-        log.info("Step 5: restart %s and publish %d more orders", crashed, args.second_batch)
+        log.info("Step 5: restart %s and publish %d new orders", crashed, args.second_batch)
         workers[crashed].stop()
         restarted = ManagedProcess(crashed, worker_args(crashed))   # appends to the same log file
         all_procs.append(restarted)
@@ -185,46 +203,59 @@ def main() -> int:
         restarted.wait_for("status=READY", timeout=60)
 
         start = args.count + 1
-        producer2 = ManagedProcess("Producer", ["producer.py", "--count", str(args.second_batch), "--start", str(start)])
-        producer2.proc.wait()
-        producer2.stop()
+        run_producer(["--count", str(args.second_batch), "--start", str(start)])
         batch2 = {f"evt-{i:04d}" for i in range(start, start + args.second_batch)}
-        if not wait_until_completed(batch2, all_procs, timeout=120):
+        if not wait_for_statuses(all_procs, batch2, Counter(), timeout=120):
             log.error("Batch 2 did not complete in time")
+            return 1
+
+        log.info("Step 6: publish 2 identical copies of '%s' while both workers are idle", DUPLICATE_EVENT)
+        run_producer(["--count", "0", "--duplicate-event", DUPLICATE_EVENT, "--duplicate-copies", "2"])
+        if not wait_for_statuses(all_procs, {DUPLICATE_EVENT}, Counter({DUPLICATE_EVENT: 1}), timeout=60):
+            log.error("Duplicate pair was not handled in time")
+            return 1
+
+        log.info("Step 7: replay already-processed %s (same event_id and payload)", ", ".join(REPLAYED))
+        run_producer(["--count", str(len(REPLAYED)), "--start", "1"])
+        if not wait_for_statuses(all_procs, set(), Counter({e: 1 for e in REPLAYED}), timeout=60):
+            log.error("Replayed events were not handled in time")
             return 1
     finally:
         for w in all_procs:
             w.stop()
 
-    return verify(batch1 | batch2, crashed)
+    return verify(batch1 | batch2 | {DUPLICATE_EVENT}, crashed)
 
 
 def verify(expected: set[str], crashed: str) -> int:
     events = parse_events([LOG_DIR / "worker-1.log", LOG_DIR / "worker-2.log"])
     completed_by = defaultdict(list)
+    duplicate_by = defaultdict(list)
     received = defaultdict(list)
     for worker, status, event_id, redelivered in events:
         if status == "COMPLETED":
             completed_by[event_id].append(worker)
+        elif status == "DUPLICATE":
+            duplicate_by[event_id].append(worker)
         elif status == "RECEIVED":
             received[event_id].append((worker, redelivered))
 
-    print("\n" + "=" * 72)
-    print(f"{'event_id':<10} {'received by (redelivered?)':<42} completed by")
-    print("-" * 72)
+    print("\n" + "=" * 96)
+    print(f"{'event_id':<14} {'received by (R = redelivered)':<42} {'executed by':<12} duplicate skipped by")
+    print("-" * 96)
     for event_id in sorted(expected):
         rec = ", ".join(f"{w}({'R' if r else '-'})" for w, r in received[event_id])
-        print(f"{event_id:<10} {rec:<42} {', '.join(completed_by[event_id])}")
-    print("=" * 72)
+        print(f"{event_id:<14} {rec:<42} {', '.join(completed_by[event_id]):<12} "
+              f"{', '.join(duplicate_by[event_id]) or '-'}")
+    print("=" * 96)
+
+    store = json.loads(STORE_FILE.read_text()) if STORE_FILE.exists() else {}
 
     checks = []
-    checks.append(("every event completed exactly once",
+    checks.append(("business action executed exactly once per event_id",
                    all(len(completed_by[e]) == 1 for e in expected)))
     checks.append(("no unexpected events completed", set(completed_by) <= expected))
-    per_worker = defaultdict(int)
-    for workers in completed_by.values():
-        for w in workers:
-            per_worker[w] += 1
+    per_worker = Counter(w for ws in completed_by.values() for w in ws)
     checks.append((f"both workers processed orders {dict(per_worker)}", len(per_worker) == 2))
     fail_rx = received[FAIL_EVENT]
     checks.append((f"{FAIL_EVENT} first received by {crashed} (redelivered=False)",
@@ -233,12 +264,22 @@ def verify(expected: set[str], crashed: str) -> int:
                    any(w != crashed and r for w, r in fail_rx)))
     checks.append((f"{FAIL_EVENT} completed by the surviving worker",
                    completed_by[FAIL_EVENT] and completed_by[FAIL_EVENT][0] != crashed))
+    checks.append((f"{DUPLICATE_EVENT}: 2 copies received, executed once, skipped once",
+                   len(received[DUPLICATE_EVENT]) == 2 and len(completed_by[DUPLICATE_EVENT]) == 1
+                   and len(duplicate_by[DUPLICATE_EVENT]) == 1))
+    dup_workers = {w for w, _ in received[DUPLICATE_EVENT]}
+    print(f"  [INFO] {DUPLICATE_EVENT} copies were delivered to: {', '.join(sorted(dup_workers))}"
+          + (" (cross-worker duplicate)" if len(dup_workers) == 2 else ""))
+    checks.append((f"replayed {', '.join(REPLAYED)} after restart detected as DUPLICATE (not re-executed)",
+                   all(len(duplicate_by[e]) == 1 and len(completed_by[e]) == 1 for e in REPLAYED)))
+    checks.append((f"{STORE_FILE.relative_to(ROOT)} records all {len(expected)} processed event_ids",
+                   set(store) == expected))
 
     ok = True
     for label, passed in checks:
         ok &= bool(passed)
         print(f"  [{'PASS' if passed else 'FAIL'}] {label}")
-    print(f"\nResult: {'ALL CHECKS PASSED' if ok else 'SOME CHECKS FAILED'}  (logs in {LOG_DIR})")
+    print(f"\nResult: {'ALL CHECKS PASSED' if ok else 'SOME CHECKS FAILED'}  (logs in {LOG_DIR.relative_to(ROOT)}/)")
     return 0 if ok else 1
 
 

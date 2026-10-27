@@ -1,0 +1,82 @@
+{
+  "evt-0001": {
+    "processed_at": "2026-10-27T01:20:59.502+00:00",
+    "result": "reserved=1xitem-webcam total=$29",
+    "worker": "Worker-2"
+  },
+  "evt-0002": {
+    "processed_at": "2026-10-27T01:20:59.504+00:00",
+    "result": "reserved=3xitem-keyboard total=$225",
+    "worker": "Worker-1"
+  },
+  "evt-0003": {
+    "processed_at": "2026-10-27T01:21:00.013+00:00",
+    "result": "reserved=2xitem-mouse total=$98",
+    "worker": "Worker-1"
+  },
+  "evt-0004": {
+    "processed_at": "2026-10-27T01:21:01.025+00:00",
+    "result": "reserved=1xitem-mouse total=$49",
+    "worker": "Worker-1"
+  },
+  "evt-0005": {
+    "processed_at": "2026-10-27T01:21:01.533+00:00",
+    "result": "reserved=5xitem-webcam total=$145",
+    "worker": "Worker-1"
+  },
+  "evt-0006": {
+    "processed_at": "2026-10-27T01:21:02.046+00:00",
+    "result": "reserved=5xitem-keyboard total=$375",
+    "worker": "Worker-1"
+  },
+  "evt-0007": {
+    "processed_at": "2026-10-27T01:21:02.565+00:00",
+    "result": "reserved=1xitem-laptop total=$62",
+    "worker": "Worker-1"
+  },
+  "evt-0008": {
+    "processed_at": "2026-10-27T01:21:03.074+00:00",
+    "result": "reserved=1xitem-keyboard total=$75",
+    "worker": "Worker-1"
+  },
+  "evt-0009": {
+    "processed_at": "2026-10-27T01:21:03.581+00:00",
+    "result": "reserved=2xitem-mouse total=$98",
+    "worker": "Worker-1"
+  },
+  "evt-0010": {
+    "processed_at": "2026-10-27T01:21:04.091+00:00",
+    "result": "reserved=5xitem-headset total=$250",
+    "worker": "Worker-1"
+  },
+  "evt-0011": {
+    "processed_at": "2026-10-27T01:21:04.797+00:00",
+    "result": "reserved=1xitem-webcam total=$29",
+    "worker": "Worker-1"
+  },
+  "evt-0012": {
+    "processed_at": "2026-10-27T01:21:04.799+00:00",
+    "result": "reserved=3xitem-keyboard total=$225",
+    "worker": "Worker-2"
+  },
+  "evt-0013": {
+    "processed_at": "2026-10-27T01:21:05.307+00:00",
+    "result": "reserved=2xitem-mouse total=$98",
+    "worker": "Worker-1"
+  },
+  "evt-0014": {
+    "processed_at": "2026-10-27T01:21:05.309+00:00",
+    "result": "reserved=1xitem-mouse total=$49",
+    "worker": "Worker-2"
+  },
+  "evt-duplicate": {
+    "processed_at": "2026-10-27T01:21:05.896+00:00",
+    "result": "reserved=1xitem-webcam total=$29",
+    "worker": "Worker-2"
+  },
+  "evt-fail": {
+    "processed_at": "2026-10-27T01:21:00.522+00:00",
+    "result": "reserved=5xitem-keyboard total=$375",
+    "worker": "Worker-1"
+  }
+}

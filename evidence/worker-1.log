@@ -1,0 +1,42 @@
+18:20:58.885 | Worker-1  | worker=Worker-1 status=READY      queue=orders prefetch=1 work_seconds=0.50 fail_on_event=evt-fail store=state/processed_events.json known_processed_events=0
+18:20:58.998 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0002 order_id=ord-1002 redelivered=False
+18:20:58.998 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0002 order_id=ord-1002 redelivered=False
+18:20:59.505 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0002 order_id=ord-1002 redelivered=False reserved=3xitem-keyboard total=$225 business_action=EXECUTED acked=True
+18:20:59.506 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0003 order_id=ord-1003 redelivered=False
+18:20:59.507 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0003 order_id=ord-1003 redelivered=False
+18:21:00.014 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0003 order_id=ord-1003 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+18:21:00.016 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-fail order_id=ord-9999 redelivered=True
+18:21:00.017 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-fail order_id=ord-9999 redelivered=True
+18:21:00.523 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-fail order_id=ord-9999 redelivered=True reserved=5xitem-keyboard total=$375 business_action=EXECUTED acked=True
+18:21:00.524 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0004 order_id=ord-1004 redelivered=False
+18:21:00.525 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0004 order_id=ord-1004 redelivered=False
+18:21:01.026 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0004 order_id=ord-1004 redelivered=False reserved=1xitem-mouse total=$49 business_action=EXECUTED acked=True
+18:21:01.027 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0005 order_id=ord-1005 redelivered=False
+18:21:01.028 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0005 order_id=ord-1005 redelivered=False
+18:21:01.535 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0005 order_id=ord-1005 redelivered=False reserved=5xitem-webcam total=$145 business_action=EXECUTED acked=True
+18:21:01.540 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0006 order_id=ord-1006 redelivered=False
+18:21:01.541 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0006 order_id=ord-1006 redelivered=False
+18:21:02.051 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0006 order_id=ord-1006 redelivered=False reserved=5xitem-keyboard total=$375 business_action=EXECUTED acked=True
+18:21:02.063 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0007 order_id=ord-1007 redelivered=False
+18:21:02.064 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0007 order_id=ord-1007 redelivered=False
+18:21:02.566 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0007 order_id=ord-1007 redelivered=False reserved=1xitem-laptop total=$62 business_action=EXECUTED acked=True
+18:21:02.569 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0008 order_id=ord-1008 redelivered=False
+18:21:02.569 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0008 order_id=ord-1008 redelivered=False
+18:21:03.076 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0008 order_id=ord-1008 redelivered=False reserved=1xitem-keyboard total=$75 business_action=EXECUTED acked=True
+18:21:03.078 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0009 order_id=ord-1009 redelivered=False
+18:21:03.079 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0009 order_id=ord-1009 redelivered=False
+18:21:03.584 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0009 order_id=ord-1009 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+18:21:03.587 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0010 order_id=ord-1010 redelivered=False
+18:21:03.588 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0010 order_id=ord-1010 redelivered=False
+18:21:04.094 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0010 order_id=ord-1010 redelivered=False reserved=5xitem-headset total=$250 business_action=EXECUTED acked=True
+18:21:04.290 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0011 order_id=ord-1011 redelivered=False
+18:21:04.291 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0011 order_id=ord-1011 redelivered=False
+18:21:04.799 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0011 order_id=ord-1011 redelivered=False reserved=1xitem-webcam total=$29 business_action=EXECUTED acked=True
+18:21:04.802 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0013 order_id=ord-1013 redelivered=False
+18:21:04.802 | Worker-1  | worker=Worker-1 status=PROCESSING event_id=evt-0013 order_id=ord-1013 redelivered=False
+18:21:05.309 | Worker-1  | worker=Worker-1 status=COMPLETED  event_id=evt-0013 order_id=ord-1013 redelivered=False reserved=2xitem-mouse total=$98 business_action=EXECUTED acked=True
+18:21:05.391 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-duplicate order_id=ord-8888 redelivered=False
+18:21:05.899 | Worker-1  | worker=Worker-1 status=DUPLICATE  event_id=evt-duplicate order_id=ord-8888 redelivered=False business_action=SKIPPED first_processed_by=Worker-2 acked=True
+18:21:06.097 | Worker-1  | worker=Worker-1 status=RECEIVED   event_id=evt-0002 order_id=ord-1002 redelivered=False
+18:21:06.097 | Worker-1  | worker=Worker-1 status=DUPLICATE  event_id=evt-0002 order_id=ord-1002 redelivered=False business_action=SKIPPED first_processed_by=Worker-1 acked=True
+18:21:06.103 | Worker-1  | worker=Worker-1 status=STOPPING  processed=12 duplicates_skipped=2
